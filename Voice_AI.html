@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SAHAKAR SETU — Voice AI (Detailed)</title>
+<style>
+  body { font-family:'Segoe UI', Arial, sans-serif; max-width:820px; margin:32px auto; padding:0 24px; color:#1a1a1a; line-height:1.55; font-size:14px; }
+  h1 { font-size:22px; color:#0b3d91; border-bottom:3px solid #0b3d91; padding-bottom:8px; }
+  h2 { font-size:16px; color:#0b3d91; margin-top:28px; border-left:4px solid #2e7d32; padding-left:10px; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+  th,td { border:1px solid #ccc; padding:6px 9px; text-align:left; vertical-align:top; }
+  th { background:#eef3fb; color:#0b3d91; }
+  code { background:#f4f4f4; padding:1px 5px; border-radius:3px; font-size:12.5px; }
+  .note { background:#f0f7f0; border-left:4px solid #2e7d32; padding:10px 14px; margin:12px 0; }
+  pre { background:#0d1b2a; color:#d8e6f5; padding:12px 14px; border-radius:8px; overflow-x:auto; font-size:12px; line-height:1.45; }
+  .meta { color:#555; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<h1>SAHAKAR SETU — Voice AI (Detailed)</h1>
+<div class="meta">How speech becomes text, how the answer becomes speech, and why the service never goes silent.</div>
+
+<h2>1. Two Speech Engines, One Brain</h2>
+<p>Sahakar Setu runs two independent speech stacks that share the same RAG + LLM core:</p>
+<table>
+  <tr><th>Path</th><th>STT</th><th>TTS</th><th>Where</th></tr>
+  <tr><td><b>IVR phone call</b> (feature phone, no internet)</td><td>Vapi.ai <code>talkscriber</code> (Whisper, <code>language: hi</code>)</td><td>Vapi voice <code>Naina</code> (<code>language: hi</code>)</td><td>Cloud — any phone on the planet calls <b>+1 346 998 6840</b></td></tr>
+  <tr><td><b>Kiosk / PWA voice</b> (on-device mic)</td><td>Local Vosk <code>vosk-small-hi-0.22</code> via persistent Python worker</td><td>edge-tts (Hindi neural voice) via persistent Python worker</td><td>On-premise — works on the kiosk even on slow links</td></tr>
+</table>
+<p class="note">Vapi is used with <b>key-less providers only</b> (talkscriber STT + Vapi TTS) — zero paid provider credentials, keeping the demo cost at ₹0 while staying fully live.</p>
+
+<h2>2. IVR Call Flow (Vapi custom-LLM integration)</h2>
+<p>The server exposes an OpenAI-compatible endpoint that Vapi's assistant calls every turn: <code>POST /webhook/vapi/chat/completions</code> (<code>handleVAPICustomLLM</code> in <code>src/channels/ivr/index.ts</code>).</p>
+<ol>
+  <li>Vapi transcribes the caller's Hindi speech (talkscriber/Whisper) and sends an OpenAI-format <code>messages</code> array to our endpoint.</li>
+  <li>Endpoint supports both <code>stream: true</code> (SSE chunks — <code>data: {"choices":[{"delta":…}]}</code> … <code>data: [DONE]</code>) and plain JSON.</li>
+  <li>The endpoint authenticates the request with <code>VAPI_LLM_SECRET</code> passed as <code>?key=</code> in the assistant's <code>model.url</code> (401 otherwise).</li>
+  <li>Call identity: the assistant's system message carries <code>CallRef: {{call.id}}</code>; the server maps the call to a session via <code>sessions.external_ref = 'vapi:&lt;callId&gt;'</code> — so every call is one persistent case record.</li>
+  <li>Same pipeline as web: language detect → retrieve (top-5, BM25) → <code>generateAnswer</code> with the voice prompt (20b model first, temp 0.7, ≤4 history turns, 250-char passages) → answer returned to Vapi → Naina speaks it.</li>
+  <li>End of call: <code>/webhook/vapi/call</code> receives the report; if the session somehow has 0 turns, <code>artifact.messages</code> is backfilled (dedupe guard) and the session is marked ended.</li>
+</ol>
+<pre><code>// Voice prompt rules (groq.ts) — a LIVE phone call, not a FAQ document
+// 1. React to the caller's exact words; never repeat phrasing across turns.
+// 2. Greet only on the first turn; never greet again mid-call.
+// 3. Everyday spoken Hindi, warm ("जी", "चिंता मत कीजिए"); no jargon, no markdown.
+// 4. Ask ONE follow-up question when a detail is missing.
+// 5. Empathy in your own words — vary it every time.
+// 6. 2–4 short spoken sentences per turn.
+// 7. FORBIDDEN on calls: "नीचे देखें", website/app/link mentions, bullets, tables.
+// 8. Out-of-domain → exact boundary message (verbatim).</code></pre>
+
+<h2>3. Local Vosk STT Worker (kiosk / PWA)</h2>
+<p>The Node server spawns a long-lived Python worker (<code>scripts/vosk_worker.py</code>) that keeps the Vosk model loaded in memory — no reload per request. Node talks to it over a JSON-lines stdin/stdout protocol:</p>
+<pre><code>// Node side — src/modules/stt/vosk.ts
+this.process = spawn('python', ['scripts/vosk_worker.py'], {
+  env: { ...process.env, VOSK_MODEL_PATH: process.env.VOSK_MODEL_PATH || 'models' }
+});
+// requests:  {"type":"transcribe","id":"…","path":"…wav","lang":"hi"}
+// responses: {"type":"ready"} | {"type":"transcript","id":"…","text":"…","is_final":true} | {"type":"error",…}</code></pre>
+<ul>
+  <li><b>Model:</b> <code>vosk-small-hi-0.22</code> stored locally in <code>models/</code> — no cloud STT dependency on the kiosk.</li>
+  <li><b>Pre-warm:</b> workers are created at server boot (~5 s model load), so the first user request is fast.</li>
+  <li><b>Self-healing:</b> <code>isAlive()</code> checks; on worker exit all pending requests reject and the next call respawns the worker.</li>
+  <li><b>Windows fix:</b> the Python workers reconfigure stdin/stdout to UTF-8 (<code>sys.stdin.reconfigure(encoding='utf-8')</code>) — the cp1252 default silently corrupted Devanagari and blocked buffers (verified: /tts returns 53 KB MP3, /stt transcribes Hindi correctly).</li>
+  <li><b>Empty transcript guard:</b> if nothing was heard, the API politely re-asks — “Mujhe aapki awaaz sunai nahi di. Kripya dohrayein.”</li>
+</ul>
+
+<h2>4. TTS Fallback Chain — the service never goes silent</h2>
+<table>
+  <tr><th>Tier</th><th>Provider</th><th>Notes</th></tr>
+  <tr><td>1</td><td><b>edge-tts</b> (Microsoft neural Hindi voice) via persistent Python worker</td><td>Primary; MP3 output; in-memory LRU cache (200 entries) + Redis (24 h) so repeated answers don't re-synthesize</td></tr>
+  <tr><td>2</td><td><b>gTTS</b> (Google Translate TTS)</td><td>Automatic fallback; used on Render where edge-tts is IP-blocked (403)</td></tr>
+  <tr><td>3</td><td><b>SMS</b></td><td>Last resort — the answer text is delivered as an SMS, so a voice question always gets an answer</td></tr>
+</table>
+
+<h2>5. Latency Budget (evaluation target: median voice turn &lt; 2.5 s end-to-end)</h2>
+<table>
+  <tr><th>Stage</th><th>Budget</th><th>How</th></tr>
+  <tr><td>STT</td><td>~0.5 s</td><td>Vapi streaming / warm Vosk worker (no model reload)</td></tr>
+  <tr><td>Retrieval</td><td>~0.2 s</td><td>BM25 over ≤1000 in-memory-ish DB rows, single query</td></tr>
+  <tr><td>LLM</td><td>~1.2 s</td><td>20b model first on voice channels, 250-char passages, 350 max tokens</td></tr>
+  <tr><td>TTS</td><td>~0.4 s</td><td>Cache hit common; Vapi Naina streams the first words early</td></tr>
+</table>
+
+<h2>6. Verified Live (24 Sep 2026)</h2>
+<ul>
+  <li>Live call to <b>+1 346 998 6840</b>: Hindi greeting, natural conversation, cited answers spoken cleanly.</li>
+  <li>Kiosk /voice: 53 KB Hindi MP3 from /tts; /stt returns correct transcript (worker UTF-8 fix verified).</li>
+  <li>ngrok tunnel (ethanol-cash-peculiar.ngrok-free.dev) serving the Vapi webhook; kiosk “awaaz samajh nahi aayi” symptom == dead tunnel, restartable with the pinned domain.</li>
+</ul>
+
+</body>
+</html>

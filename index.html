@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sahakar Setu — SIH 2026 Documentation</title>
+<style>
+  :root { --blue:#0b3d91; --green:#2e7d32; }
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI', Arial, sans-serif; margin:0; color:#1a1a1a; background:#f7f9fc; }
+  header { background:linear-gradient(135deg, var(--blue), #164a9e); color:#fff; padding:48px 24px; text-align:center; }
+  header h1 { margin:0; font-size:32px; }
+  header p { margin:10px 0 0; opacity:.9; font-size:15px; }
+  .lang { color:#a7d0ff; font-size:16px; }
+  main { max-width:960px; margin:0 auto; padding:32px 24px; }
+  .card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:22px 26px; margin:18px 0; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .card h2 { margin-top:0; color:var(--blue); border-left:4px solid var(--green); padding-left:10px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  a.doc { display:block; background:#eef3fb; border:1px solid #d4e0f5; border-radius:8px; padding:14px 16px; color:var(--blue); text-decoration:none; font-weight:600; }
+  a.doc:hover { background:#dde8fa; }
+  a.doc small { display:block; color:#555; font-weight:400; margin-top:4px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th,td { border:1px solid #ddd; padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:#eef3fb; color:var(--blue); }
+  .badge { display:inline-block; background:var(--green); color:#fff; border-radius:20px; padding:2px 12px; font-size:12px; }
+  code { background:#f4f4f4; padding:1px 5px; border-radius:3px; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sahakar Setu</h1>
+  <p class="lang">सहकार सेतु</p>
+  <p>Multilingual Cooperative Governance &amp; Legal Assistance — SIH 2026 · PS 26088 · Team LexNova</p>
+  <p><span class="badge">Live: +1 346 998 6840</span> &nbsp; <span class="badge">Live: sahakar-setu-server.onrender.com</span></p>
+</header>
+<main>
+  <div class="card">
+    <h2>Detailed Documentation</h2>
+    <div class="grid">
+      <a class="doc" href="Technical_Approach.html">Technical Approach<small>RAG engine deep-dive: BM25 retrieval, guardrailed generation, grounding retry, citation extraction — with code.</small></a>
+      <a class="doc" href="Voice_AI.html">Voice AI<small>IVR call flow (Vapi), local Vosk STT worker, TTS fallback chain, 4-channel degradation.</small></a>
+      <a class="doc" href="Grievance_Module.html">Grievance Module<small>Hindi templates, tracking IDs, fact memory, escalation ladder, kiosk printing.</small></a>
+      <a class="doc" href="Kiosk_Hardware.html">Kiosk Hardware<small>Phone + OTG hub + amplifier + speaker + thermal printer — BOM, power, cost.</small></a>
+    </div>
+    <h3 style="color:#0b3d91">PDF copies (same docs, for submission)</h3>
+    <div class="grid">
+      <a class="doc" href="pdfs/idea-approach-detailed.pdf">IDEA_APPROACH_Detailed (PDF)</a>
+      <a class="doc" href="pdfs/technical-approach.pdf">TECHNICAL_APPROACH_Detailed (PDF)</a>
+      <a class="doc" href="pdfs/voice-ai-detailed.pdf">VOICE_AI_Detailed (PDF)</a>
+      <a class="doc" href="pdfs/grievance-detailed.pdf">GRIEVANCE_MODULE_Detailed (PDF)</a>
+      <a class="doc" href="pdfs/kiosk-hardware-detailed.pdf">KIOSK_HARDWARE_Detailed (PDF)</a>
+      <a class="doc" href="dataset/">Dataset (corpus + eval)<small>333 passages, 13 eval queries — HuggingFace upload ready.</small></a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Live Demos</h2>
+    <table>
+      <tr><th>Artifact</th><th>Link</th></tr>
+      <tr><td>IVR voice assistant (call from any phone)</td><td><code>+1 346 998 6840</code></td></tr>
+      <tr><td>Production server (health &amp; API)</td><td><code>https://sahakar-setu-server.onrender.com</code> → <code>/health</code> → <code>{status: ok, db: connected}</code></td></tr>
+      <tr><td>Web chat / PWA</td><td><code>[WEB_APP_URL — fill from deployment]</code></td></tr>
+      <tr><td>Demo video</td><td>YouTube — 2–3 min walkthrough (call flow, cited answer, grievance draft + tracking)</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>System at a Glance</h2>
+    <table>
+      <tr><th>Layer</th><th>Stack</th></tr>
+      <tr><td>API server</td><td>Node.js 24, TypeScript, Express, WebSocket (ws)</td></tr>
+      <tr><td>LLM</td><td>Groq <code>openai/gpt-oss-120b</code> (text) / <code>openai/gpt-oss-20b</code> (voice-first) with automatic fallback</td></tr>
+      <tr><td>Retrieval</td><td>Deterministic BM25 keyword search over Supabase <code>corpus_passages</code> (333 passages)</td></tr>
+      <tr><td>Database</td><td>Supabase (PostgreSQL): sessions, messages, cases, case_facts, grievance_drafts, grievance_tracking</td></tr>
+      <tr><td>Voice</td><td>Vapi.ai telephony (talkscriber Whisper STT, Naina Hindi TTS) · local Vosk <code>vosk-small-hi-0.22</code> · edge-tts → gTTS fallback</td></tr>
+      <tr><td>Kiosk</td><td>Capacitor Android app (API 26+) wrapping the shared React PWA + ESC/POS thermal printing</td></tr>
+      <tr><td>Deployment</td><td>Docker, Render (live), local Windows dev with detached workers</td></tr>
+    </table>
+  </div>
+</main>
+</body>
+</html>

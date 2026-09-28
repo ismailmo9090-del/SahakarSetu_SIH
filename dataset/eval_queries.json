@@ -1,0 +1,93 @@
+[
+  {
+    "id": 1,
+    "query": "PMFBY premium kya hai?",
+    "language": "hinglish",
+    "domain": "PMFBY",
+    "expected_source_doc": "pmfby ops"
+  },
+  {
+    "id": 2,
+    "query": "Mera voting right hai kya?",
+    "language": "hinglish",
+    "domain": "cooperative law",
+    "expected_source_doc": "laws core"
+  },
+  {
+    "id": 3,
+    "query": "Member banne ke liye kya karna hoga?",
+    "language": "hinglish",
+    "domain": "cooperative law",
+    "expected_source_doc": "laws core"
+  },
+  {
+    "id": 4,
+    "query": "Kisan credit card ke liye kaunse documents chahiye?",
+    "language": "hinglish",
+    "domain": "schemes",
+    "expected_source_doc": "pacs services"
+  },
+  {
+    "id": 5,
+    "query": "Fasal beema claim kaise karein?",
+    "language": "hinglish",
+    "domain": "PMFBY",
+    "expected_source_doc": "pmfby ops"
+  },
+  {
+    "id": 6,
+    "query": "Society me shikayat kaise darj karein?",
+    "language": "hinglish",
+    "domain": "grievance redressal",
+    "expected_source_doc": "grievance redressal"
+  },
+  {
+    "id": 7,
+    "query": "EMI kaise calculate karein?",
+    "language": "hinglish",
+    "domain": "financial literacy",
+    "expected_source_doc": "financial literacy"
+  },
+  {
+    "id": 8,
+    "query": "PM Kisan yojana ke benefits kya hain?",
+    "language": "hinglish",
+    "domain": "schemes",
+    "expected_source_doc": "schemes ministry"
+  },
+  {
+    "id": 9,
+    "query": "Cooperative society ke byelaws kya hote hain?",
+    "language": "hinglish",
+    "domain": "cooperative law",
+    "expected_source_doc": "laws core"
+  },
+  {
+    "id": 10,
+    "query": "Sahakari bank me loan kaise lein?",
+    "language": "hinglish",
+    "domain": "PACS services",
+    "expected_source_doc": "pacs services"
+  },
+  {
+    "id": 11,
+    "query": "Surplus ka distribution kaise hota hai?",
+    "language": "hinglish",
+    "domain": "cooperative law",
+    "expected_source_doc": "laws core"
+  },
+  {
+    "id": 12,
+    "query": "Grievance ko Registrar ke paas kab escalate karein?",
+    "language": "hinglish",
+    "domain": "grievance redressal",
+    "expected_source_doc": "grievance redressal"
+  },
+  {
+    "id": 13,
+    "query": "Bachat aur byaj ke baare mein samjhao",
+    "language": "hinglish",
+    "domain": "financial literacy",
+    "expected_source_doc": "financial literacy"
+  }
+]

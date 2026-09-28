@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SAHAKAR SETU — Kiosk Hardware (Detailed)</title>
+<style>
+  body { font-family:'Segoe UI', Arial, sans-serif; max-width:820px; margin:32px auto; padding:0 24px; color:#1a1a1a; line-height:1.55; font-size:14px; }
+  h1 { font-size:22px; color:#0b3d91; border-bottom:3px solid #0b3d91; padding-bottom:8px; }
+  h2 { font-size:16px; color:#0b3d91; margin-top:28px; border-left:4px solid #2e7d32; padding-left:10px; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+  th,td { border:1px solid #ccc; padding:6px 9px; text-align:left; vertical-align:top; }
+  th { background:#eef3fb; color:#0b3d91; }
+  code { background:#f4f4f4; padding:1px 5px; border-radius:3px; font-size:12.5px; }
+  .note { background:#f0f7f0; border-left:4px solid #2e7d32; padding:10px 14px; margin:12px 0; }
+  .warn { background:#fdf3f3; border-left:4px solid #c0392b; padding:10px 14px; margin:12px 0; }
+  .render { text-align:center; margin:18px 0; }
+  .render img { max-width:100%; border:1px solid #ddd; border-radius:10px; }
+  .caption { font-size:12px; color:#666; margin-top:6px; }
+  .meta { color:#555; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<h1>SAHAKAR SETU — Kiosk Hardware (Detailed)</h1>
+<div class="meta">PS 26088 is proposed as software + hardware. This is the hardware story: a ₹2,000–3,000 add-on turns an ordinary Android phone into a full cooperative service point.</div>
+
+<div class="render">
+  <img src="kiosk-render.png" alt="Sahakar Setu kiosk 3D render">
+  <div class="caption">Sahakar Setu kiosk — 3D render: Android phone (compute + display + mic), powered USB hub, amplifier + speaker, thermal receipt printer, transparent acrylic enclosure.</div>
+</div>
+
+<h2>1. Design Principle: Why No New Hardware Is the Right Hardware Strategy</h2>
+<p>A purpose-built kiosk (Raspberry Pi 5 + touchscreen + power backup) costs <b>₹35,000–40,000 per unit</b>. India has ~1.02 lakh PACS — that would need ≈₹220 crore for hardware alone (illustrative). Sahakar Setu instead repurposes a commodity Android phone (Android 8.0+, 2 GB RAM) — devices PACS staff already own or that cost ₹2,000–3,000 refurbished — and adds ₹600–900 of off-the-shelf peripherals. Same service, ~95% cheaper, and upgradable by swapping only the phone.</p>
+
+<h2>2. Component Breakdown (Bill of Materials)</h2>
+<table>
+  <tr><th>#</th><th>Component</th><th>Spec</th><th>Role</th><th>Approx. cost</th></tr>
+  <tr><td>1</td><td><b>Android phone / tablet</b></td><td>Android 8.0+ (API 26+), 2 GB RAM min (4 GB preferred)</td><td>Main compute + touch display + mic + speaker fallback; runs the Capacitor kiosk APK</td><td>₹2,000–3,000 (refurbished)</td></tr>
+  <tr><td>2</td><td><b>USB OTG cable</b></td><td>Micro-USB or USB-C (per phone)</td><td>Phone → hub data/power bridge</td><td>₹50–100</td></tr>
+  <tr><td>3</td><td><b>Powered USB hub</b></td><td>4-port, externally powered</td><td>Connects printer + speaker; charges the phone; stable power for ESC/POS bursts</td><td>₹250–400</td></tr>
+  <tr><td>4</td><td><b>Amplifier circuit + speaker</b></td><td>3 W+ mono, 3.5 mm or USB input</td><td>Loud, clear Hindi audio for low-literacy and elderly members</td><td>₹150–250</td></tr>
+  <tr><td>5</td><td><b>Thermal receipt printer</b></td><td>58 mm or 80 mm, ESC/POS, USB</td><td>Prints grievance drafts, tracking IDs, receipts — the member's paper proof</td><td>₹900–1,400</td></tr>
+  <tr><td>6</td><td><b>Enclosure</b></td><td>Transparent acrylic / branded cardboard, phone mount, cable management</td><td>Physical presence, branding (सहकार सेतु), tamper-resistance, neat internal wiring</td><td>₹200–500</td></tr>
+  <tr><td>7</td><td><b>Power adapter</b></td><td>5 V / 2 A (hub + printer)</td><td>Single mains input powers the whole kiosk</td><td>₹100–150</td></tr>
+</table>
+<p class="note"><b>Total per kiosk: ≈ ₹3,700–5,800</b> (excluding the phone) vs ₹35,000–40,000 for a Pi-based custom unit — roughly 85–90% cheaper, with the phone doubling as a backup device the PACS already has.</p>
+
+<h2>3. How It Fits Together</h2>
+<table>
+  <tr><th>Signal / power path</th><th>Detail</th></tr>
+  <tr><td>Mains → 5V/2A adapter</td><td>Feeds the powered hub and the printer</td></tr>
+  <tr><td>Phone ⇄ hub (OTG)</td><td>Single cable; hub powers the phone and routes data</td></tr>
+  <tr><td>Hub → printer (USB)</td><td>ESC/POS commands from the app print drafts/receipts</td></tr>
+  <tr><td>Hub → amplifier → speaker</td><td>Audio out at 3 W — audible across a PACS office</td></tr>
+  <tr><td>Phone mic → app → server</td><td>Voice captured in-app, STT/TTS via the server (or local Vosk on-device offline mode)</td></tr>
+</table>
+
+<h2>4. Software That Makes It a Kiosk (Capacitor)</h2>
+<p>The kiosk APK reuses the <b>same React PWA codebase</b> as the web client, wrapped in Capacitor with kiosk-specific native plugins:</p>
+<table>
+  <tr><th>Plugin</th><th>Why a browser can't do this</th></tr>
+  <tr><td>Thermal Printer</td><td>Browsers cannot reliably drive USB OTG ESC/POS printers</td></tr>
+  <tr><td>Kiosk Lockdown (Device Owner mode)</td><td>Member cannot exit the app — browser tabs can be closed</td></tr>
+  <tr><td>Auto-start on boot</td><td>Kiosk is alive after a power cut without staff intervention</td></tr>
+  <tr><td>Session timeout + auto-clear</td><td>No member PII left on the shared screen; forced inactivity logout</td></tr>
+  <tr><td>Offline cache</td><td>Cached corpus, financial-literacy audio lessons and calculators work through poor connectivity</td></tr>
+  <tr><td>Crash recovery</td><td>App auto-restarts; a crashed browser tab does not</td></tr>
+  <tr><td>Remote config</td><td>Server pushes language packs / content updates to all kiosks</td></tr>
+</table>
+<p class="warn"><b>Privacy rule:</b> no member PII is ever stored on the device — everything goes straight to the server; sessions auto-clear after inactivity.</p>
+
+<h2>5. Power Budget</h2>
+<table>
+  <tr><th>Load</th><th>Draw</th></tr>
+  <tr><td>Printer (print burst)</td><td>~1.5 A @ 5 V peak</td></tr>
+  <tr><td>Amplifier + speaker (3 W)</td><td>~0.6 A @ 5 V</td></tr>
+  <tr><td>Phone charging via hub</td><td>~0.5 A @ 5 V</td></tr>
+  <tr><td><b>Total (adapter 2 A)</b></td><td>~2.6 A peak → 5 V / 3 A adapter recommended for continuous printing</td></tr>
+</table>
+
+<h2>6. Optional Upgrades (future)</h2>
+<ul>
+  <li>Raspberry Pi 5 as alternate compute (₹35,000–40,000/kiosk only where justified).</li>
+  <li>Larger touchscreen display where the phone screen is too small.</li>
+  <li>Solar / battery backup for areas with unreliable power.</li>
+</ul>
+
+<h2>7. Current Status</h2>
+<ul>
+  <li>Kiosk APK built and installed on a Samsung A03 test device (<code>adb install -r</code>) — voice chat, grievance preview and printing paths verified live.</li>
+  <li>Render image: <code>FINAL KIOSK.png</code> (included above) — submitted with this document.</li>
+</ul>
+
+</body>
+</html>

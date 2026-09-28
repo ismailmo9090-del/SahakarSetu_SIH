@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SAHAKAR SETU — Grievance Module (Detailed)</title>
+<style>
+  body { font-family:'Segoe UI', Arial, sans-serif; max-width:820px; margin:32px auto; padding:0 24px; color:#1a1a1a; line-height:1.55; font-size:14px; }
+  h1 { font-size:22px; color:#0b3d91; border-bottom:3px solid #0b3d91; padding-bottom:8px; }
+  h2 { font-size:16px; color:#0b3d91; margin-top:28px; border-left:4px solid #2e7d32; padding-left:10px; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+  th,td { border:1px solid #ccc; padding:6px 9px; text-align:left; vertical-align:top; }
+  th { background:#eef3fb; color:#0b3d91; }
+  code { background:#f4f4f4; padding:1px 5px; border-radius:3px; font-size:12.5px; }
+  .note { background:#f0f7f0; border-left:4px solid #2e7d32; padding:10px 14px; margin:12px 0; }
+  .hi { background:#faf7ef; border:1px solid #e8dfc8; border-radius:6px; padding:12px 16px; margin:12px 0; }
+  .meta { color:#555; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<h1>SAHAKAR SETU — Grievance Module (Detailed)</h1>
+<div class="meta">How a spoken complaint becomes a formal, addressed, trackable application — in Hindi, without the member writing a single word.</div>
+
+<h2>1. The Problem This Solves</h2>
+<p>A rural PACS member with a stuck PMFBY claim or a loan dispute cannot draft a formal application: they don't know the format, the correct addressee, or the legal language. Sahakar Setu interviews them conversationally (on any channel), extracts the facts, and generates a formal grievance application addressed to the <b>correct authority</b> — with a tracking ID they can check from a feature phone.</p>
+
+<h2>2. Eight Grievance Categories → Correct Addressee</h2>
+<table>
+  <tr><th>Category</th><th>Addressee (Hindi template)</th></tr>
+  <tr><td><code>society_pacs</code></td><td>PACS Secretary / PACS Prabandhak</td></tr>
+  <tr><td><code>cooperative_bank</code></td><td>Bank Nodal Grievance Officer</td></tr>
+  <tr><td><code>insurance_pmfby</code></td><td>Insurance Grievance Cell / Bima Lokpal</td></tr>
+  <tr><td><code>registrar_level</code></td><td>Registrar of Cooperative Societies</td></tr>
+  <tr><td><code>election</code></td><td>Registrar / Cooperative Election Authority</td></tr>
+  <tr><td><code>loan</code></td><td>Branch Manager, Sahakari Bank</td></tr>
+  <tr><td><code>subsidy</code></td><td>District Cooperative Officer</td></tr>
+  <tr><td><code>land</code></td><td>Tehsildar / Sub-Divisional Magistrate</td></tr>
+</table>
+
+<h2>3. Fact Memory Feeds the Template</h2>
+<p>Conversation turns are mined for structured facts (<code>extractFacts</code> in <code>src/modules/case-memory/</code>): <b>name, father's name, village, district, state, PACS name, membership number, issue description, application date, receipt number, amount, phone</b>. Facts accumulate in the case (<code>case_facts</code> table) across calls and channels, so the grievance draft fills itself without re-asking. (The code uses camelCase <code>factKey/factValue</code>; Supabase stores snake_case <code>fact_key/fact_value</code> — mapped in <code>getCaseFacts</code>.)</p>
+
+<h2>4. Draft Generation (Handlebars, Hindi-first)</h2>
+<p><code>generateDraft</code> (<code>src/modules/grievance/index.ts</code>) compiles <code>templates/grievance.hi.hbs</code> with the facts. A generated Hindi draft looks like:</p>
+<div class="hi">
+सेवा में,<br>
+श्रीमान सचिव, प्राथमिक कृषि साख समिति (PACS Secretary)<br><br>
+<b>विषय:</b> PMFBY शिकायत: गेहूं की फसल का नुकसान<br><br>
+महोदय,<br><br>
+मैं, राम लाल, ग्राम सरायकेला का सदस्य (सदस्यता सं. 4521) हूँ। मेरी गेहूं की फसल ओलावृष्टि में नष्ट हो गई है। मैंने दिनांक 12-03-2026 को आवेदन किया था, रसीद सं. 88412। अब तक दावा लंबित है।<br><br>
+कृपया उपरोक्त मामले का निस्तारण 15 दिनों के भीतर करने की कृपा करें।<br><br>
+सादर,<br>
+राम लाल<br>
+दिनांक: 28-09-2026<br>
+<b>ट्रैकिंग आईडी: SS-2026-000006</b>
+</div>
+
+<h2>5. Tracking IDs That Survive</h2>
+<ul>
+  <li>Format: <code>SS-2026-XXXXXX</code> (e.g. the live-verified <code>SS-2026-000006</code>).</li>
+  <li>Collision-safe: ID generation retries up to 3× if the ID already exists in <code>grievance_drafts</code>.</li>
+  <li>Stored in <code>grievance_drafts</code> (case_id, tracking_id, addressee, subject, body, language) + a <code>grievance_tracking</code> status row (<code>drafted</code>).</li>
+  <li>Track on any channel: <code>GET /api/v1/grievance/track/:trackingId</code> returns the draft + full status history (newest first).</li>
+</ul>
+
+<h2>6. Time-Based Escalation Ladder</h2>
+<p><code>getEscalationPath</code> (<code>src/modules/escalation/</code>) computes the member's current step from the case age, with a ready draft template at every level:</p>
+<table>
+  <tr><th>Step</th><th>Authority</th><th>Triggers</th><th>Draft template</th></tr>
+  <tr><td>1</td><td>Society / PACS Secretary</td><td>Immediately (status <code>open</code>)</td><td><code>society_grievance</code></td></tr>
+  <tr><td>2</td><td>Registrar of Cooperative Societies</td><td>&gt; 15 days without resolution</td><td><code>registrar_grievance</code></td></tr>
+  <tr><td>3</td><td>Insurance Ombudsman</td><td>PMFBY cases &gt; 30 days</td><td><code>ombudsman_complaint</code></td></tr>
+  <tr><td>4</td><td>Legal Aid (NALSA)</td><td>Escalated cases &gt; 60 days</td><td><code>legal_aid_application</code></td></tr>
+</table>
+
+<h2>7. Honest Case Strength (Verdict Engine)</h2>
+<ul>
+  <li>Each case gets a <b>0–100 strength score</b> with the missing evidence listed — no false hope.</li>
+  <li>Cases scoring <b>60+</b> are offered verified-advocate connect (<code>/api/v1/lawyer/connect</code>).</li>
+  <li>The score comes from facts present vs. facts required for that grievance category (documents, dates, receipts).</li>
+</ul>
+
+<h2>8. Kiosk Printout</h2>
+<p>On the kiosk (Capacitor Android app), the draft and tracking receipt print on a 58/80 mm ESC/POS thermal printer via USB OTG — the member walks away with a signed-form-ready paper application. On the web/PWA the same draft is copyable and downloadable.</p>
+
+<p class="note"><b>Live-verified:</b> grievance draft + tracking flow tested end-to-end on the deployed server — Hindi template fills facts correctly, tracking ID retrievable.</p>
+
+</body>
+</html>
