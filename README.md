@@ -6,7 +6,7 @@
 | Artifact | Link |
 |---|---|
 | IVR voice assistant (Hindi, feature phone) | **+1 346 998 6840** |
-| Production server (health/API) | https://sahakar-setu-server.onrender.com (`/health` → `{status: ok, db: connected}`) |
+| Production server (health/API) | https://sahakar-setu-server-tfnq.onrender.com (`/health` → `{status: ok, db: connected}`) |
 | Web chat / PWA | https://sahakar-setu-ai.vercel.app/ |
 | Demo video | *[YouTube link]* |
 

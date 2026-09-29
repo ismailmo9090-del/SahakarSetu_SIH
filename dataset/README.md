@@ -64,7 +64,7 @@ The live assistant retrieves from this corpus with a deterministic BM25 search:
 ## Live system
 
 - **IVR voice assistant:** +1 346 998 6840 (Hindi, feature-phone, no internet needed)
-- **Server:** https://sahakar-setu-server.onrender.com (health: `/health`)
+- **Server:** https://sahakar-setu-server-tfnq.onrender.com (health: `/health`)
 - **Docs:** GitHub Pages — Sahakar Setu SIH 2026 documentation site
 
 ## Citation
